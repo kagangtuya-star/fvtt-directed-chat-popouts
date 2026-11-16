@@ -139,11 +139,128 @@ test("compact styles bind to public frame elements and short cards fit their con
   assert(app.window.resize.classes.has("dcp-popout-resize"));
   assert(app.window.close.classes.has("dcp-popout-control"));
   app.window.content = makePart(300);
+  app.window.content.querySelector = () => makePart(300);
   app.setPosition({ height: 650 });
   app.dispatchEvent(new Event("render"));
   assert(app.window.content.classes.has("dcp-popout-content"), "core frame updates regain their scoped styling");
   await manager.open(message.id);
-  assert.equal(app.position.height, 650, "a repeated push preserves the user's resized height");
+  assert.equal(app.position.height, 326, "rerender and repeated pushes keep the card flush with the frame");
+});
+
+function observedWindow() {
+  const frames = new Map();
+  let next = 0;
+  class Observer {
+    static instances = [];
+    targets = new Set();
+    constructor(callback) { this.callback = callback; this.constructor.instances.push(this); }
+    observe(node) { this.targets.add(node); }
+    unobserve(node) { this.targets.delete(node); }
+    disconnect() { this.targets.clear(); }
+    trigger() { if (this.targets.size) this.callback(); }
+  }
+  class ResizeObserver extends Observer { static instances = []; }
+  class MutationObserver extends Observer { static instances = []; }
+  const layout = {
+    ResizeObserver, MutationObserver,
+    requestAnimationFrame(callback) { const id = ++next; frames.set(id, callback); return id; },
+    cancelAnimationFrame(id) { frames.delete(id); }
+  };
+  const flush = () => {
+    const pending = [...frames.values()];
+    frames.clear();
+    for (const callback of pending) callback();
+    assert.equal(frames.size, 0, "fitting must not schedule a feedback loop");
+  };
+  const node = height => ({ classList: { add() {} }, height,
+    getBoundingClientRect() { return { height: this.height }; } });
+  class ObservedPopout extends NativePopoutFake {
+    constructor(options) {
+      super(options);
+      Object.assign(this.element, { offsetHeight: 520, clientHeight: 518 });
+      this.card = node(180);
+      this.window = { content: node(0), header: node(24) };
+      this.window.content.querySelector = () => this.card;
+      this.positions = 0;
+    }
+    setPosition(position) { this.positions++; super.setPosition(position); }
+  }
+  const f = setup(ObservedPopout);
+  f.manager.layout = layout;
+  return { ...f, flush, frames, node, ResizeObserver, MutationObserver };
+}
+
+test("card expansion, collapse, late image sizing and width reflow remain flush", async () => {
+  const f = observedWindow();
+  await f.manager.open(f.message.id);
+  const app = NativePopoutFake.instances[0];
+  f.flush();
+  const observer = f.ResizeObserver.instances[0];
+  for (const [content, expected] of [[380, 406], [90, 116], [1000, 520], [210, 236]]) {
+    app.card.height = content;
+    observer.trigger(); observer.trigger();
+    assert.equal(f.frames.size, 1, "coalesce layout notifications");
+    f.flush();
+    assert.equal(app.position.height, expected);
+  }
+  const count = app.positions;
+  observer.trigger(); f.flush();
+  assert.equal(app.positions, count, "unchanged geometry must not call setPosition again");
+  await f.manager.closeAll();
+});
+
+test("DOM replacement and core rerender rebind observers; close cancels pending work", async () => {
+  const f = observedWindow();
+  await f.manager.open(f.message.id);
+  const app = NativePopoutFake.instances[0];
+  f.flush();
+  const oldCard = app.card;
+  app.card = f.node(310);
+  f.MutationObserver.instances[0].trigger(); f.flush();
+  assert.equal(app.position.height, 336);
+  assert(!f.ResizeObserver.instances[0].targets.has(oldCard));
+  assert(f.ResizeObserver.instances[0].targets.has(app.card));
+  app.card = f.node(120);
+  app.dispatchEvent(new Event("render")); f.flush();
+  assert.equal(app.position.height, 146);
+  assert.equal(f.ResizeObserver.instances[0].targets.size, 0);
+  f.ResizeObserver.instances.at(-1).trigger();
+  assert.equal(f.frames.size, 1);
+  await f.manager.closeAll();
+  assert.equal(f.frames.size, 0);
+  for (const observer of [...f.ResizeObserver.instances, ...f.MutationObserver.instances]) {
+    assert.equal(observer.targets.size, 0);
+    observer.trigger();
+  }
+  app.dispatchEvent(new Event("render"));
+  app.dispatchEvent(new Event("position"));
+  assert.equal(f.frames.size, 0, "closed windows have no live layout listeners");
+});
+
+test("manual resizing sets a scroll cap while short cards stay flush; restore and viewport resize refit", async () => {
+  const f = observedWindow();
+  await f.manager.open(f.message.id);
+  const app = NativePopoutFake.instances[0];
+  f.flush();
+  app.setPosition({ width: 640, height: 650 }); f.flush();
+  assert.equal(app.position.width, 640);
+  assert.equal(app.position.height, 206, "dragging taller must not leave blank space");
+  app.card.height = 1000;
+  f.ResizeObserver.instances[0].trigger(); f.flush();
+  assert.equal(app.position.height, 650, "long content uses the selected scroll cap");
+  app.setPosition({ height: 300 }); f.flush();
+  assert.equal(app.position.height, 300, "users can reduce the height for long content");
+  await app.minimize();
+  app.card.height = 90;
+  f.ResizeObserver.instances[0].trigger(); f.flush();
+  assert.equal(app.position.height, 300, "do not resize minimized frames");
+  await app.maximize(); f.flush();
+  assert.equal(app.position.height, 116);
+  Object.assign(f.viewport, { width: 320, height: 120 });
+  f.manager.fitToViewport(); f.flush();
+  assert(app.position.height <= 112 && app.position.width <= 312);
+  assert(app.position.top + app.position.height <= 120);
+  await f.manager.closeAll();
 });
 
 test("long cards keep the initial height limit and scroll inside the content", async () => {

@@ -50,10 +50,10 @@ export class NativePopoutFake extends EventTarget {
   }
   async render() { this.rendered = true; this.dispatchEvent(new Event("render")); return this; }
   async close() { this.rendered = false; this.dispatchEvent(new Event("close")); return this; }
-  async minimize() { this.minimized = true; }
-  async maximize() { this.minimized = false; }
+  async minimize() { this.minimized = true; this.dispatchEvent(new Event("position")); }
+  async maximize() { this.minimized = false; this.dispatchEvent(new Event("position")); }
   bringToFront() { this.focuses++; }
-  setPosition(position) { Object.assign(this.position, position); }
+  setPosition(position) { Object.assign(this.position, position); this.dispatchEvent(new Event("position")); }
 }
 
 // Small DOM contract double for the vanilla picker; this is not a browser.

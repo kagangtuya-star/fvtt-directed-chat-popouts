@@ -1,0 +1,18 @@
+.dcp-recipient-picker { max-width: 100vw; max-height: 100dvh; }
+.dcp-recipient-picker .window-content { overflow: auto; }
+.dcp-picker-form { display: flex; flex-direction: column; gap: 0.75rem; min-height: 0; height: 100%; }
+.dcp-picker-form p { margin: 0; }
+.dcp-selection-actions, .dcp-picker-footer { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.dcp-selection-actions button, .dcp-picker-footer button { flex: 1; }
+.dcp-recipient-list { overflow: auto; flex: 1; min-height: 3rem; }
+.dcp-recipient { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.25rem; cursor: pointer; }
+.dcp-recipient input { flex: 0 0 auto; }
+.dcp-user-name { flex: 1; overflow-wrap: anywhere; }
+.dcp-user-status, .dcp-privacy-note { font-size: var(--font-size-12, 0.8rem); }
+.dcp-unavailable { opacity: 0.6; cursor: default; }
+.dcp-picker-footer { margin-top: auto; }
+
+/* Preserve the core/system card styles and native theme; scope only layout. */
+.dcp-popout { max-width: 100vw; max-height: 100dvh; min-width: min(240px, 100vw); min-height: 0; }
+.dcp-popout .window-content { overflow: auto; min-height: 0; }
+.dcp-popout .message { max-width: 100%; overflow-wrap: anywhere; }

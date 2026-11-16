@@ -1,71 +1,79 @@
-![](https://img.shields.io/badge/Foundry-v10-informational)
-<!--- Downloads @ Latest Badge -->
-<!--- replace <user>/<repo> with your username/repository -->
-<!--- ![Latest Release Download Count](https://img.shields.io/github/downloads/<user>/<repo>/latest/module.zip) -->
+# Directed Chat Popouts
 
-<!--- Forge Bazaar Install % Badge -->
-<!--- replace <your-module-name> with the `name` in your manifest -->
-<!--- ![Forge Installs](https://img.shields.io/badge/dynamic/json?label=Forge%20Installs&query=package.installs&suffix=%25&url=https%3A%2F%2Fforge-vtt.com%2Fapi%2Fbazaar%2Fpackage%2F<your-module-name>&colorB=4aa94a) -->
+GM 可以在聊天消息的右键菜单中选择「推送悬浮卡片…」，向一个、多个或全部在线玩家打开原生聊天悬浮窗。模块 ID：`directed-chat-popouts`。目标版本：Foundry VTT v13 / v14。
 
+默认选择所有有权查看消息的在线非 GM 玩家；离线及无权限玩家不可选。选择窗口支持全选、取消全选，空选时禁用推送。被选玩家可拖动、调整大小、双击标题最小化、关闭窗口，同时继续操作地图。同一消息重复推送会恢复并聚焦已有窗口，关闭不删除原消息。不同消息可同时打开，长内容内部滚动。
 
-# How to use this Template to create a versioned Release
+## 安装
 
-1. Open your repository's releases page.
+本地构建产物在 `dist/directed-chat-popouts.zip`，配套 `dist/module.json`、`dist/SHA256SUMS`。
 
-![Where to click to open repository releases.](https://user-images.githubusercontent.com/7644614/93409301-9fd25080-f864-11ea-9e0c-bdd09e4418e4.png)
+1. 将 ZIP 解压到 Foundry 用户数据目录 `Data/modules/directed-chat-popouts/`。
+2. 确认路径为 `Data/modules/directed-chat-popouts/module.json`，避免重复嵌套目录。
+3. 重启 Foundry，在世界的模组管理中启用 **Directed Chat Popouts**，所有客户端刷新页面。
+4. GM 右键聊天消息，选择接收者并推送。浅色和深色界面沿用 Foundry 原生主题；语言跟随 Foundry，提供简体中文及英文。
 
-2. Click "Draft a new release"
+正式发布 GitHub Release 并上传附件后，可以在 Foundry「安装模组」中使用：
 
-![Draft a new release button.](https://user-images.githubusercontent.com/7644614/93409364-c1333c80-f864-11ea-89f1-abfcb18a8d9f.png)
+```text
+https://github.com/kagangtuya-star/fvtt-directed-chat-popouts/releases/latest/download/module.json
+```
 
-3. Fill out the release version as the tag name.
+该 URL 是发布后的地址；本地开发完成不表示附件已上传，目前可直接用 ZIP 手动安装。
 
-If you want to add details at this stage you can, or you can always come back later and edit them.
+## 消息交互与权限
 
-![Release Creation Form](https://user-images.githubusercontent.com/7644614/93409543-225b1000-f865-11ea-9a19-f1906a724421.png)
+直接实例化 Foundry 原生 `ChatPopout`，由核心调用正式消息渲染机制，不复制聊天栏 DOM，不重写 PF2e 规则。保留 `renderChatMessageHTML`、`renderChatPopout` 等系统与模组扩展路径。普通文本、核心骰子、PF2e 的内联检定、物品、法术、动作和伤害卡片均走其原有渲染和权限逻辑。
 
-4. Hit submit.
+推送通过核心服务器认证的 **ChatMessage 文档更新 / Socket 同步机制**传递：仅在消息 flag 中保存协议版本、消息 ID、接收者 ID、随机 nonce 和时间。没有 socketlib 或其他运行时依赖，也没有自定义的裸 Socket 监听器。接收端核验核心 `updateChatMessage` Hook 的实际更新发起用户是 GM，拒绝普通玩家的更新；载荷不提供可冒充的发送者 ID。再核验接收者、时效、去重及本机 `visible` / `isContentVisible`。后续普通消息编辑不会触发旧的推送记录。
 
-5. Wait a few minutes.
+这不会共享或公开消息：其他玩家的密语、GM-only 消息及盲掷不会通过推送获得可见性。所有非 GM 盲掷推送均被保守禁止。玩家没有推送菜单，即使自行更新其所写消息上的本模组 flag，也不能让其他客户端打开窗口。安全边界依赖 Foundry 服务器认证、文档权限和核心 Hook；不能防御接收者本机的恶意代码或被攻陷的服务器。
 
-A Github Action will run to populate the `module.json` and `module.zip` with the correct urls that you can then use to distribute this release. You can check on its status in the "Actions" tab.
+原消息的普通更新由原生弹窗同步；消息删除或本机失去查看权限时关闭关联窗口。每条消息最多保留最后一份小型推送 flag，不保存 HTML，不建立历史队列。离线期间不排队，重连/刷新不重放；请求有效期 120 秒，客户端时钟允许超前 30 秒。GM 提示表示服务器接受推送，不是玩家端阅读回执；断线、未启用模组或系统阻止渲染的客户端可能无法显示。
 
-![Actions Tab](https://user-images.githubusercontent.com/7644614/93409820-c1800780-f865-11ea-8c6b-c3792e35e0c8.png)
+## 兼容范围与验证状态
 
-6. Grab the module.json url from the release's details page.
+已核实 v13.350、v14.370 官方 API 和 PF2e `v13-dev`（调查时 7.12.2）的渲染/弹窗绑定源码。兼容层只使用这些版本共同的公开 API；不覆盖核心方法，不使用私有 API。由于没有真实 Foundry 运行实例，manifest 不填写 `compatibility.verified`，避免将 API 调查写成实际运行认证。
 
-![image](https://user-images.githubusercontent.com/7644614/93409960-10c63800-f866-11ea-83f6-270cc5d10b71.png)
+自动测试使用隔离的 Foundry/DOM 合约替身，覆盖菜单权限、默认接收者、选择操作、发送/接收、安全处理、重复请求、生命周期、并发、v13/v14 适配和窗口边界；**不等同于真实服务器端到端或 PF2e 浏览器交互测试**。真实环境步骤见 [手工测试清单](docs/manual-testing.md)，已执行检查及环境见 [验证记录](docs/validation.md)。
 
-This `module.json` will only ever point at this release's `module.zip`, making it useful for sharing a specific version for compatibility purposes.
+第三方模组若只给 `#chat-log` 委托事件、依赖固定 DOM ID、依赖聊天栏专属状态、使用过时渲染 Hook 或主动禁止弹窗，其部分按钮可能失效。只在原生消息/弹窗渲染路径上正确注册交互的功能才能自然保留。Requestor 的旧版 Hook 及所有第三方组合、PF2e 在 v14 上的具体发行版本都需实机验收，不能宣称全部兼容。详情见 [API 调查与方案](docs/api-research.md)。
 
-7. You can use the url `https://github.com/<user>/<repo>/releases/latest/download/module.json` to refer to the manifest.
+## 开发与构建
 
-This is the url you want to use to install the module typically, as it will get updated automatically.
+只需 Node.js 22 或更新版本，不需要安装任何依赖：
 
-# How to List Your Releases on Package Admin
+```sh
+npm run check
+npm test
+npm run build
+```
 
-To request a package listing for your first release, go to the [Package Submission Form](https://foundryvtt.com/packages/submit) (accessible via a link at the bottom of the "[Systems and Modules](https://foundryvtt.com/packages/)" page on the Foundry website).
+`check` 执行 JavaScript 语法、manifest、文件路径及双语键/插值一致性检查；没有依赖 ESLint。`test` 使用 Node 内置测试器。`build` 使用标准库生成确定性的标准 ZIP、独立 manifest 和 SHA-256 校验文件，不修改源码。ZIP 内根目录就是 `module.json`；仅打包运行文件、许可证和文档，不含测试、构建工具、Git、缓存或依赖。
 
-Fill in the form. "Package Name" must match the name in the module manifest.  Package Title will be the display name for the package.  Package URL should be your repo URL.
-![image](https://user-images.githubusercontent.com/36359784/120664263-b49e5500-c482-11eb-9126-af7006389903.png)
+```text
+scripts/       入口、API 兼容层、接收策略、控制器、原生弹窗管理、玩家选择窗口
+styles/        仅本模组窗口布局样式
+languages/     简体中文 / English
+tests/         隔离自动测试
+tools/         无第三方依赖的检查与构建工具
+docs/          API 依据、验证记录、手工验收清单
+dist/          本地安装包与 manifest（生成，不纳入 Git）
+```
 
+## 发布
 
-One of the Foundry staff will typically get back to you with an approval or any further questions within a few days, and give you access to the package admin pages.
+当前版本为 `0.1.0`。发布前在 v13/v14 与实际使用的游戏系统中完成手工测试，再按结果决定是否填写 `compatibility.verified`。
 
-Once you have access to the [module admin page](https://foundryvtt.com/admin/packages/package/), you can release a new version by going into the page for your module, scrolling to the bottom, and filling in a new Package Version.
+1. 同步修改 `package.json`、`module.json` 的版本与源码 manifest 的下载版本路径。
+2. 执行上述三个命令，检查安装包及文档，提交代码。
+3. 在 GitHub 创建与版本对应的 Release（例如 `v0.1.0`）。仓库工作流会检查、测试、构建并上传 ZIP、module.json 和 SHA256SUMS；tag 与 manifest 版本不符会失败。
+4. 在 Foundry 官方包管理页面登记模块及版本。开发过程未创建 Release、tag 或进行 push。
 
-When listing a new version, Version should be the version number you set above, and the Manifest URL should be the manifest __for that specific version__ (do not use /latest/ here).
-![image](https://user-images.githubusercontent.com/36359784/120664346-c4b63480-c482-11eb-9d8b-731b50d70939.png)
+工作流使用当前 `GITHUB_REPOSITORY` 生成发布 URL，fork 发布时无需硬编码改构建器。推送、PR 和手动运行工作流只生成可下载构建附件；仅发布 Release 事件会上传发行附件。
 
-> ### :warning: Important :warning:
-> 
-> It is very important that you use the specific release manifest url, and not the `/latest` url here. For more details about why this is important and how Foundry Installs/Updates packages, read [this wiki article](https://foundryvtt.wiki/en/development/guides/releases-and-history).
+## English
 
-Clicking "Save" in the bottom right will save the new version, which means that anyone installing your module from within Foundry will get that version, and a post will be generated in the #release-announcements channel on the official Foundry VTT Discord.
+GM-only context menu → select online non-GM recipients → native, nonmodal chat popouts. Repeated pushes focus/restore the same message window. Core authenticated document updates carry only a small request flag; recipient visibility and blind-roll restrictions are preserved. No runtime dependencies. Manual ZIP installation: extract into `Data/modules/directed-chat-popouts/`, enable in the world, and refresh clients. Foundry v13/v14 APIs were researched; real Foundry/PF2e end-to-end validation is still required. See the linked testing and compatibility documents.
 
-
-# FoundryVTT Module
-
-Does something, probably
-
-## Changelog
+MIT License. No third-party module or system implementation is bundled.

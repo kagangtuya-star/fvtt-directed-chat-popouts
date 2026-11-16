@@ -1,0 +1,24 @@
+{
+  "DCP": {
+    "PushMenu": "推送悬浮卡片…",
+    "PickerTitle": "推送悬浮卡片",
+    "PickerHelp": "选择需要查看此聊天卡片的在线玩家。",
+    "Recipients": "接收玩家",
+    "SelectAll": "全选",
+    "SelectNone": "取消全选",
+    "Push": "推送",
+    "Cancel": "取消",
+    "Sending": "正在推送…",
+    "Online": "在线",
+    "Offline": "离线 · 无法推送",
+    "Private": "无消息查看权限",
+    "NoPlayers": "当前世界尚无非 GM 玩家。",
+    "PrivacyNote": "仅向有权查看消息的在线玩家推送，保留密语与盲掷权限。",
+    "NoRecipients": "没有有效的在线接收者，请检查选择和消息权限。",
+    "GMOnly": "只有 GM 可以推送聊天卡片。",
+    "Unavailable": "聊天消息已不存在，或其内容不可见。",
+    "Sent": "已向 {count} 位玩家发起推送；接收需要其客户端保持连接并启用本模组。",
+    "Failed": "无法推送聊天卡片，请查看浏览器控制台中的错误详情。",
+    "Unsupported": "Directed Chat Popouts 需要带有原生 ChatPopout 的 Foundry VTT v13 或 v14。"
+  }
+}

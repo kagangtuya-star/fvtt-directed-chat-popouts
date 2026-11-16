@@ -1,0 +1,14 @@
+{
+  "name": "directed-chat-popouts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "GM-directed native Foundry VTT chat popouts",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "check": "node tools/check.mjs",
+    "test": "node --test",
+    "build": "node tools/build.mjs"
+  }
+}

@@ -34,11 +34,13 @@ async function setup() {
 test("picker defaults online players, renders offline disabled, safely renders names", async () => {
   const { picker, inputs, users } = await setup();
   assert.deepEqual([...picker.selected], ["p1", "p2"]);
-  assert.equal(inputs().length, 3);
+  assert.equal(inputs().length, 4);
+  assert.equal(inputs().find(input => input.value === "gm").checked, false);
+  assert.equal(inputs().find(input => input.value === "gm").disabled, false);
   assert.equal(inputs().find(input => input.value === "off").disabled, true);
   users.get("p1").name = '<img src=x onerror="alert(1)">';
   await picker.render();
-  const name = picker.form.all(node => node.className === "dcp-user-name")[0];
+  const name = picker.form.all(node => node.className === "dcp-user-name").find(node => node.textContent === users.get("p1").name);
   assert.equal(name.textContent, users.get("p1").name);
   assert.equal(name.children.length, 0);
 });
@@ -50,8 +52,22 @@ test("clear/select all never selects offline users; empty selection disables pus
   assert.equal(picker.selected.size, 0);
   await button("SelectAll").trigger("click");
   assert.equal(button("Push").disabled, false);
-  assert.deepEqual([...picker.selected], ["p1", "p2"]);
+  assert.deepEqual([...picker.selected], ["gm", "p1", "p2"]);
   assert.equal(inputs().find(input => input.value === "off").checked, false);
+});
+
+test("GM can select only themselves and submit without player recipients", async () => {
+  const { picker, inputs, button, sent } = await setup();
+  const labels = picker.form.all(node => node.className === "dcp-user-name");
+  assert(labels[0].textContent.startsWith("DCP.SelfGM"));
+  await button("SelectNone").trigger("click");
+  const self = inputs().find(input => input.value === "gm");
+  self.checked = true;
+  await self.trigger("change");
+  assert.equal(button("Push").disabled, false);
+  await picker.form.trigger("submit");
+  assert.deepEqual(sent, [["message1", ["gm"]]]);
+  assert.equal(picker.closed, true);
 });
 
 test("individual selection submits once and closes", async () => {

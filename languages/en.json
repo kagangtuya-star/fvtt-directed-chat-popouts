@@ -2,8 +2,9 @@
   "DCP": {
     "PushMenu": "Push floating card…",
     "PickerTitle": "Push floating card",
-    "PickerHelp": "Select the online players who should see this chat card.",
+    "PickerHelp": "Select online players to receive this card. You can also include yourself (GM).",
     "Recipients": "Recipients",
+    "SelfGM": "{name} (me · GM)",
     "SelectAll": "Select all",
     "SelectNone": "Clear selection",
     "Push": "Push",
@@ -12,12 +13,12 @@
     "Online": "Online",
     "Offline": "Offline · unavailable",
     "Private": "Message not visible",
-    "NoPlayers": "There are no non-GM players in this world.",
-    "PrivacyNote": "Only online players with access can receive this card. Whisper and blind-roll permissions are preserved.",
+    "NoPlayers": "There are no recipients to display.",
+    "PrivacyNote": "Only online recipients with access can receive this card. Whisper and blind-roll permissions are preserved.",
     "NoRecipients": "No eligible online recipients remain. Check the selection and message permissions.",
     "GMOnly": "Only a GM may push chat cards.",
     "Unavailable": "This chat message no longer exists or its content is not visible.",
-    "Sent": "Push sent to {count} player(s). Delivery requires their client to be connected with the module enabled.",
+    "Sent": "Push sent to {count} recipient(s). Delivery requires their client to be connected with the module enabled.",
     "Failed": "The chat card could not be pushed. See the browser console for details.",
     "Unsupported": "Directed Chat Popouts requires Foundry VTT v13 or v14 with native ChatPopout support."
   }

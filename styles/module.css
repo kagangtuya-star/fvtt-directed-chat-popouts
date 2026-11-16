@@ -12,7 +12,90 @@
 .dcp-unavailable { opacity: 0.6; cursor: default; }
 .dcp-picker-footer { margin-top: auto; }
 
-/* Preserve the core/system card styles and native theme; scope only layout. */
-.dcp-popout { max-width: 100vw; max-height: 100dvh; min-width: min(240px, 100vw); min-height: 0; }
-.dcp-popout .window-content { overflow: auto; min-height: 0; }
-.dcp-popout .message { max-width: 100%; overflow-wrap: anywhere; }
+/* Keep the core frame and its listeners; only compact this module's popouts. */
+.application.dcp-popout {
+  --header-height: 24px;
+  box-sizing: border-box;
+  max-width: 100vw;
+  max-height: 100dvh;
+  min-height: 0;
+  padding: 0;
+}
+.application.dcp-popout:not(.minimized) { min-width: min(240px, 100vw); }
+.application.dcp-popout.minimized { min-width: 0; }
+.application.dcp-popout .dcp-popout-header {
+  box-sizing: border-box;
+  flex: 0 0 var(--header-height);
+  height: var(--header-height);
+  min-height: 0;
+  padding: 0 2px 0 6px;
+  gap: 4px;
+}
+.application.dcp-popout .dcp-popout-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 11px;
+  line-height: var(--header-height);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.application.dcp-popout .dcp-popout-control {
+  box-sizing: border-box;
+  flex: 0 0 22px;
+  width: 22px;
+  height: 22px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+  line-height: 22px;
+}
+.application.dcp-popout .dcp-popout-content {
+  overflow: auto;
+  min-height: 0;
+  padding: 0;
+  gap: 0;
+}
+.application.dcp-popout .dcp-popout-content > .message {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.application.dcp-popout .dcp-popout-resize {
+  position: absolute;
+  inset: auto 0 0 auto;
+  box-sizing: border-box;
+  display: block;
+  width: 16px;
+  height: 16px;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  transform: none;
+  font-size: 0;
+  color: var(--color-text-secondary, currentColor);
+  cursor: nwse-resize;
+  z-index: 1;
+}
+.application.dcp-popout .dcp-popout-resize > * { visibility: hidden; }
+.application.dcp-popout .dcp-popout-resize::before { content: none; }
+.application.dcp-popout .dcp-popout-resize::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: repeating-linear-gradient(135deg, transparent 0 2px, currentColor 2px 3px, transparent 3px 5px);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 1px 0 rgb(0 0 0 / 45%));
+  pointer-events: none;
+}
+.application.dcp-popout.minimized .dcp-popout-resize { display: none; }

@@ -1,9 +1,11 @@
 import { FUTURE_TOLERANCE_MS, MAX_AGE_MS, PROTOCOL } from "./constants.js";
 
 // The receiving client's visibility getters remain authoritative for systems.
-export function recipientBlock(message, user) {
-  if (user.isGM) return "GMOnly";
+export function recipientBlock(message, user, senderId) {
+  if (user.isGM && user.id !== senderId) return "GMOnly";
   if (!user.active) return "Offline";
+  // GM self-delivery still passes canRead on that client's message document.
+  if (user.isGM) return null;
   if (message.blind) return "Private";
   const whisper = message.whisper ?? [];
   const authorId = message.author?.id ?? message.user?.id ?? message.user;
@@ -11,10 +13,11 @@ export function recipientBlock(message, user) {
   return null;
 }
 
-export function recipientRows(message, users) {
-  return Array.from(users).filter(user => !user.isGM).map(user => ({
+export function recipientRows(message, users, senderId) {
+  return Array.from(users).filter(user => !user.isGM || user.id === senderId).map(user => ({
     id: user.id, name: user.name, active: user.active === true,
-    blocked: recipientBlock(message, user)
+    isGM: user.isGM === true, isSelf: user.id === senderId,
+    blocked: recipientBlock(message, user, senderId)
   }));
 }
 
@@ -22,7 +25,7 @@ export function canRead(message) {
   return !!message && message.visible === true && message.isContentVisible === true;
 }
 
-export function validRequest(request, messageId, user, users, now = Date.now()) {
+export function validRequest(request, messageId, user, users, now = Date.now(), senderId) {
   if (!request || typeof request !== "object" || Array.isArray(request)) return false;
   if (request.protocol !== PROTOCOL || request.messageId !== messageId) return false;
   if (typeof request.nonce !== "string" || !/^[a-zA-Z0-9-]{16,80}$/.test(request.nonce)) return false;
@@ -31,8 +34,8 @@ export function validRequest(request, messageId, user, users, now = Date.now()) 
   const ids = request.recipients;
   if (!Array.isArray(ids) || !ids.length || ids.length > users.size) return false;
   if (new Set(ids).size !== ids.length) return false;
-  if (ids.some(id => typeof id !== "string" || !users.get(id) || users.get(id).isGM)) return false;
-  return user?.active === true && !user.isGM && ids.includes(user.id);
+  if (ids.some(id => typeof id !== "string" || !users.get(id) || (users.get(id).isGM && id !== senderId))) return false;
+  return user?.active === true && ids.includes(user.id);
 }
 
 export class SeenRequests {

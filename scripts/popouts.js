@@ -4,6 +4,28 @@ import { canRead } from "./policy.js";
 export class PopoutManager {
   #windows = new Map();
 
+  #styleWindow(app) {
+    app.element?.classList.add("dcp-popout");
+    // Use public frame references instead of depending on core markup selectors.
+    for (const [part, className] of Object.entries({
+      header: "dcp-popout-header", title: "dcp-popout-title",
+      content: "dcp-popout-content", resize: "dcp-popout-resize",
+      controls: "dcp-popout-control", close: "dcp-popout-control"
+    })) app.window?.[part]?.classList.add(className);
+  }
+
+  #fitInitialCard(app) {
+    const card = app.window?.content?.querySelector("[data-message-id]");
+    const cardHeight = card?.getBoundingClientRect().height;
+    const headerHeight = app.window?.header?.getBoundingClientRect().height;
+    if (!cardHeight || !headerHeight) return;
+    const borders = Math.max(0, app.element.offsetHeight - app.element.clientHeight);
+    const limit = initialPosition(this.viewport()).height;
+    // Short cards should not leave an empty panel below the message. Long
+    // cards keep a bounded initial height and scroll inside the core content.
+    app.setPosition({ height: Math.min(limit, Math.ceil(cardHeight + headerHeight + borders)) });
+  }
+
   constructor({ ChatPopout, messages, viewport, instances = new Map() }) {
     Object.assign(this, { ChatPopout, messages, viewport, instances });
   }
@@ -30,19 +52,22 @@ export class PopoutManager {
     });
     const entry = { app, ready: null };
     this.#windows.set(messageId, entry);
-    app.element?.classList.add("dcp-popout");
+    this.#styleWindow(app);
     app.addEventListener("close", () => {
       if (this.#windows.get(messageId) === entry) this.#windows.delete(messageId);
     });
     app.addEventListener("render", () => {
-      app.element?.classList.add("dcp-popout");
+      this.#styleWindow(app);
       if (!canRead(this.messages.get(messageId))) {
         void app.close().catch(error => console.error("Directed Chat Popouts | close", error));
       }
     });
     entry.ready = (async () => {
       try {
-        if (!existing) await app.render({ force: true });
+        if (!existing) {
+          await app.render({ force: true });
+          this.#fitInitialCard(app);
+        }
         if (app.minimized) await app.maximize();
         if (!canRead(this.messages.get(messageId))) {
           await app.close();

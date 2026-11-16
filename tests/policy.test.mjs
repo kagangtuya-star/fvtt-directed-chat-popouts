@@ -16,6 +16,22 @@ test("recipients: online defaults, offline and GM exclusions, whisper author and
   assert.equal(recipientBlock(message, users.get("p1")), "Private");
 });
 
+test("recipient list includes the sending GM; self-delivery respects online state", () => {
+  const { message, users } = world();
+  users.set("otherGM", { id: "otherGM", name: "Other GM", active: true, isGM: true });
+  const rows = recipientRows(message, users, "gm");
+  assert.deepEqual(rows.map(row => row.id), ["gm", "p1", "p2", "off"]);
+  assert.equal(rows[0].isSelf, true);
+  assert.equal(rows[0].blocked, null);
+  message.blind = true;
+  message.whisper = ["gm"];
+  assert.equal(recipientBlock(message, users.get("gm"), "gm"), null);
+  assert.equal(recipientBlock(message, users.get("p1"), "gm"), "Private");
+  assert.equal(recipientBlock(message, users.get("otherGM"), "gm"), "GMOnly");
+  users.get("gm").active = false;
+  assert.equal(recipientBlock(message, users.get("gm"), "gm"), "Offline");
+});
+
 test("message visibility requires both core getters, fails closed for missing data", () => {
   for (const message of [null, {}, { visible: true }, { visible: false, isContentVisible: true }, { visible: true, isContentVisible: false }]) {
     assert.equal(canRead(message), false);
@@ -46,6 +62,16 @@ test("duplicate cache expires and stays bounded", () => {
   assert.equal(seen.accept("a", 120001), true);
   for (let i = 0; i < 1025; i++) seen.accept(String(i), 120001);
   assert.equal(seen.accept("a", 120001), true);
+});
+
+test("GM recipients must match the authenticated sender, not a payload identity", () => {
+  const { message, users } = world();
+  users.set("otherGM", { id: "otherGM", active: true, isGM: true });
+  const request = { protocol: 1, nonce: crypto.randomUUID(), messageId: message.id, recipients: ["gm", "p1"], issuedAt: 1000000 };
+  assert.equal(validRequest(request, message.id, users.get("gm"), users, 1000000, "gm"), true);
+  assert.equal(validRequest(request, message.id, users.get("p1"), users, 1000000, "gm"), true);
+  assert.equal(validRequest({ ...request, senderId: "gm" }, message.id, users.get("gm"), users, 1000000, "otherGM"), false);
+  assert.equal(validRequest({ ...request, recipients: ["otherGM"] }, message.id, users.get("otherGM"), users, 1000000, "gm"), false);
 });
 
 for (const generation of [13, 14]) test(`v${generation}: supported public API namespace and menu hook contract`, () => {

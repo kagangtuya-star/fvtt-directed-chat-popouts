@@ -107,3 +107,58 @@ test("an already open core popout is reused via the public application registry"
   assert.equal(NativePopoutFake.instances.length, 1);
   assert.equal(app.minimized, false);
 });
+
+test("compact styles bind to public frame elements and short cards fit their content", async () => {
+  const part = height => ({
+    classes: new Set(),
+    classList: { add(name) { this.owner.classes.add(name); } },
+    getBoundingClientRect: () => ({ height })
+  });
+  const makePart = height => {
+    const node = part(height);
+    node.classList.owner = node;
+    return node;
+  };
+  class FramedPopout extends NativePopoutFake {
+    constructor(options) {
+      super(options);
+      this.element.offsetHeight = 520;
+      this.element.clientHeight = 518;
+      this.window = {
+        header: makePart(24), title: makePart(12), content: makePart(180),
+        resize: makePart(16), controls: makePart(22), close: makePart(22)
+      };
+      this.window.content.querySelector = () => makePart(180);
+    }
+  }
+  const { manager, message } = setup(FramedPopout);
+  await manager.open(message.id);
+  const app = NativePopoutFake.instances[0];
+  assert.equal(app.position.height, 206, "card + compact header + borders, without an empty lower panel");
+  assert(app.window.header.classes.has("dcp-popout-header"));
+  assert(app.window.resize.classes.has("dcp-popout-resize"));
+  assert(app.window.close.classes.has("dcp-popout-control"));
+  app.window.content = makePart(300);
+  app.setPosition({ height: 650 });
+  app.dispatchEvent(new Event("render"));
+  assert(app.window.content.classes.has("dcp-popout-content"), "core frame updates regain their scoped styling");
+  await manager.open(message.id);
+  assert.equal(app.position.height, 650, "a repeated push preserves the user's resized height");
+});
+
+test("long cards keep the initial height limit and scroll inside the content", async () => {
+  class LongCardPopout extends NativePopoutFake {
+    constructor(options) {
+      super(options);
+      this.element.offsetHeight = 520;
+      this.element.clientHeight = 518;
+      this.window = {
+        content: { classList: { add() {} }, querySelector: () => ({ getBoundingClientRect: () => ({ height: 2000 }) }) },
+        header: { classList: { add() {} }, getBoundingClientRect: () => ({ height: 24 }) }
+      };
+    }
+  }
+  const { manager, message } = setup(LongCardPopout);
+  await manager.open(message.id);
+  assert.equal(NativePopoutFake.instances[0].position.height, 520);
+});

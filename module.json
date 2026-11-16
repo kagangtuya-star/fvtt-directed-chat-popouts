@@ -1,8 +1,8 @@
 {
   "id": "directed-chat-popouts",
   "title": "Directed Chat Popouts",
-  "description": "让 GM 向指定在线玩家推送原生聊天悬浮卡片。GM-directed native chat popouts for selected online players.",
-  "version": "0.1.0",
+  "description": "让 GM 向在线玩家及自己推送原生聊天悬浮卡片。GM-directed native chat popouts for online players and the sending GM.",
+  "version": "0.1.3",
   "compatibility": {
     "minimum": "13",
     "maximum": "14"
@@ -24,7 +24,7 @@
   ],
   "languages": [
     {
-      "lang": "zh-cn",
+      "lang": "cn",
       "name": "简体中文",
       "path": "languages/zh-cn.json"
     },
@@ -36,7 +36,7 @@
   ],
   "url": "https://github.com/kagangtuya-star/fvtt-directed-chat-popouts",
   "manifest": "https://github.com/kagangtuya-star/fvtt-directed-chat-popouts/releases/latest/download/module.json",
-  "download": "https://github.com/kagangtuya-star/fvtt-directed-chat-popouts/releases/download/v0.1.0/directed-chat-popouts.zip",
+  "download": "https://github.com/kagangtuya-star/fvtt-directed-chat-popouts/releases/download/v0.1.3/directed-chat-popouts.zip",
   "license": "LICENSE",
   "readme": "README.md"
 }

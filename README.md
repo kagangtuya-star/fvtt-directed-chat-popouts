@@ -1,8 +1,10 @@
 # Directed Chat Popouts
 
-GM 可以在聊天消息的右键菜单中选择「推送悬浮卡片…」，向一个、多个或全部在线玩家打开原生聊天悬浮窗。模块 ID：`directed-chat-popouts`。目标版本：Foundry VTT v13 / v14。
+GM 可以在聊天消息的右键菜单中选择「推送悬浮卡片…」，向一个、多个或全部在线玩家以及 GM 自己打开原生聊天悬浮窗。模块 ID：`directed-chat-popouts`。目标版本：Foundry VTT v13 / v14。
 
-默认选择所有有权查看消息的在线非 GM 玩家；离线及无权限玩家不可选。选择窗口支持全选、取消全选，空选时禁用推送。被选玩家可拖动、调整大小、双击标题最小化、关闭窗口，同时继续操作地图。同一消息重复推送会恢复并聚焦已有窗口，关闭不删除原消息。不同消息可同时打开，长内容内部滚动。
+列表包含在线玩家和标注为「我 · GM」的当前 GM。默认选择所有有权查看消息的在线非 GM 玩家，GM 自己默认不勾选；「全选」包含自己，也可仅勾选自己。离线及无权限玩家不可选，空选时禁用推送。接收者可拖动、调整大小、双击标题最小化、关闭窗口，同时继续操作地图。同一消息重复推送会恢复并聚焦已有窗口，关闭不删除原消息。不同消息可同时打开，长内容内部滚动。
+
+悬浮窗采用 24px 紧凑标题栏，缩放手柄位于右下角内侧，卡片贴合内容区。首次打开短卡片时按内容收缩高度，长卡片保留滚动；手动调整后的尺寸不会因重复推送被重置。
 
 ## 安装
 
@@ -63,17 +65,17 @@ dist/          本地安装包与 manifest（生成，不纳入 Git）
 
 ## 发布
 
-当前版本为 `0.1.0`。发布前在 v13/v14 与实际使用的游戏系统中完成手工测试，再按结果决定是否填写 `compatibility.verified`。
+当前版本为 `0.1.3`，增加 GM 自己作为接收对象，并保留紧凑窗口布局和菜单启动顺序修复。覆盖安装后需要刷新所有客户端。发布前在 v13/v14 与实际使用的游戏系统中完成手工测试，再按结果决定是否填写 `compatibility.verified`。
 
 1. 同步修改 `package.json`、`module.json` 的版本与源码 manifest 的下载版本路径。
 2. 执行上述三个命令，检查安装包及文档，提交代码。
-3. 在 GitHub 创建与版本对应的 Release（例如 `v0.1.0`）。仓库工作流会检查、测试、构建并上传 ZIP、module.json 和 SHA256SUMS；tag 与 manifest 版本不符会失败。
+3. 在 GitHub 创建与版本对应的 Release（例如 `v0.1.3`）。仓库工作流会检查、测试、构建并上传 ZIP、module.json 和 SHA256SUMS；tag 与 manifest 版本不符会失败。
 4. 在 Foundry 官方包管理页面登记模块及版本。开发过程未创建 Release、tag 或进行 push。
 
 工作流使用当前 `GITHUB_REPOSITORY` 生成发布 URL，fork 发布时无需硬编码改构建器。推送、PR 和手动运行工作流只生成可下载构建附件；仅发布 Release 事件会上传发行附件。
 
 ## English
 
-GM-only context menu → select online non-GM recipients → native, nonmodal chat popouts. Repeated pushes focus/restore the same message window. Core authenticated document updates carry only a small request flag; recipient visibility and blind-roll restrictions are preserved. No runtime dependencies. Manual ZIP installation: extract into `Data/modules/directed-chat-popouts/`, enable in the world, and refresh clients. Foundry v13/v14 APIs were researched; real Foundry/PF2e end-to-end validation is still required. See the linked testing and compatibility documents.
+GM-only context menu → select online players and optionally yourself (GM) → native, nonmodal chat popouts. Online players are selected by default; the sending GM is optional and included by Select all. Repeated pushes focus/restore the same message window. Core authenticated document updates carry only a small request flag; recipient visibility and blind-roll restrictions are preserved. No runtime dependencies. Manual ZIP installation: extract into `Data/modules/directed-chat-popouts/`, enable in the world, and refresh clients. Foundry v13/v14 APIs were researched; real Foundry/PF2e end-to-end validation is still required. See the linked testing and compatibility documents.
 
 MIT License. No third-party module or system implementation is bundled.

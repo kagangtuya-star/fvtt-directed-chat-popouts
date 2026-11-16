@@ -4,12 +4,14 @@ import { PopoutManager } from "./popouts.js";
 import { recipientPickerClass } from "./picker.js";
 import { PushController } from "./controller.js";
 
-Hooks.once("ready", () => {
+// setup runs after documents exist and before UI applications initialize.
+// ChatLog constructs its context menu before ready, so registering there is late.
+Hooks.once("setup", () => {
   let capabilities;
   try { capabilities = hostCapabilities(); }
   catch (error) {
     console.error("Directed Chat Popouts |", error);
-    ui.notifications.error(localize("Unsupported"));
+    Hooks.once("ready", () => ui.notifications.error(localize("Unsupported")));
     return;
   }
   const popouts = new PopoutManager({
@@ -19,7 +21,9 @@ Hooks.once("ready", () => {
   const Picker = recipientPickerClass(capabilities.ApplicationV2);
   const pickers = new Map();
   const controller = new PushController({
-    game, hooks: Hooks, popouts, notify: ui.notifications, contextHook: capabilities.contextHook,
+    game, hooks: Hooks, popouts,
+    notify: { error: message => ui.notifications.error(message) },
+    contextHook: capabilities.contextHook,
     openPicker: message => {
       let picker = pickers.get(message.id);
       if (!picker) {
@@ -44,5 +48,5 @@ Hooks.once("ready", () => {
     if (picker) void picker.close().catch(error => controller.report(error));
   });
   globalThis.addEventListener("resize", () => popouts.fitToViewport());
-  console.info(`${MODULE_ID} | ready`);
+  Hooks.once("ready", () => console.info(`${MODULE_ID} | ready`));
 });

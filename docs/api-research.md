@@ -25,7 +25,7 @@
 | ChatPopout | 两版都位于 `foundry.applications.sidebar.apps.ChatPopout`，继承 ApplicationV2，具有 `message` getter、`_renderHTML`、`_onFirstRender`、`_onClose`。使用 `new ChatPopout({message, position, window})`；构造入参还由公开类型定义确认。直接用核心类，保留系统的 `renderChatPopout` Hook。 |
 | 实例注册 | `foundry.applications.instances` 是公开的已渲染 ApplicationV2 Map。优先复用同一消息已打开的核心弹窗，额外维护本模组的在途渲染记录处理并发去重。 |
 | 窗口生命周期 | 使用 `render({force:true})`、`bringToFront()`、`minimize()` / `maximize()`、`close()`、`setPosition()`，以及公开 `render` / `close` 事件。`window.resizable`、`window.minimizable` 均为公开配置，最小化交互为双击标题。拖动由核心窗口框架处理。 |
-| 右键菜单 | 两版通用 Hook 文档均为 `getDocumentContextOptions(application, menuItems)`，把 Document 替换为 ChatMessage，即 `getChatMessageContextOptions`。与旧版 `getChatLogEntryContext(html, entries)` 不同。仅追加菜单项，不改原数组其他条目。目标 DOM 从 `data-message-id` 解析；兼容层也能归一化旧模组包装的目标元素。 |
+| 右键菜单 | 两版通用 Hook 文档均为 `getDocumentContextOptions(application, menuItems)`，把 Document 替换为 ChatMessage，即 `getChatMessageContextOptions`。与旧版 `getChatLogEntryContext(html, entries)` 不同。监听在 `setup` 注册，赶在 UI 首次构建菜单之前，不能延至 `ready`。仅追加菜单项，不改原数组其他条目。目标 DOM 从 `data-message-id` 解析；兼容层也能归一化旧模组包装的目标元素。 |
 | 消息更新/删除 | `updateChatMessage(document, changed, options, userId)` 在服务器处理完后对所有连接客户端触发；`deleteChatMessage(document, options, userId)` 关闭关联弹窗。原生 ChatPopout 注册消息应用以更新内容，本模组额外处理消息不可见与删除。 |
 | v14 额外能力 | v14 ApplicationV2 增加子窗口/分离窗口等能力，ChatPopout 的默认动作还列出 `expandRoll`。模块不接管动作、不依赖这些新增能力，保留核心行为。 |
 
@@ -35,12 +35,15 @@
 - [v13 ChatPopout](https://foundryvtt.com/api/v13/classes/foundry.applications.sidebar.apps.ChatPopout.html)、[v14 ChatPopout](https://foundryvtt.com/api/v14/classes/foundry.applications.sidebar.apps.ChatPopout.html)
 - [v13 ChatLog](https://foundryvtt.com/api/v13/classes/foundry.applications.sidebar.tabs.ChatLog.html)、[v14 ChatLog](https://foundryvtt.com/api/v14/classes/foundry.applications.sidebar.tabs.ChatLog.html)
 - [v13 菜单 Hook](https://foundryvtt.com/api/v13/functions/hookEvents.getDocumentContextOptions.html)、[v14 菜单 Hook](https://foundryvtt.com/api/v14/functions/hookEvents.getDocumentContextOptions.html)
+- [v13 setup](https://foundryvtt.com/api/v13/functions/hookEvents.setup.html)、[v14 setup](https://foundryvtt.com/api/v14/functions/hookEvents.setup.html)：文档已初始化、UI 应用尚未初始化，适合提前注册菜单监听；通知应用按需访问，避免过早捕获尚未创建的 `ui.notifications`。
 - [v13 ApplicationV2](https://foundryvtt.com/api/v13/classes/foundry.applications.api.ApplicationV2.html)、[v14 ApplicationV2](https://foundryvtt.com/api/v14/classes/foundry.applications.api.ApplicationV2.html)
 - [窗口配置](https://foundryvtt.com/api/v13/interfaces/foundry.applications.types.ApplicationWindowConfiguration.html)、[v13 实例注册表](https://foundryvtt.com/api/v13/variables/foundry.applications.instances.html)、[v14 实例注册表](https://foundryvtt.com/api/v14/variables/foundry.applications.instances.html)
 - [更新 Hook](https://foundryvtt.com/api/v13/functions/hookEvents.updateDocument.html)、[删除 Hook](https://foundryvtt.com/api/v13/functions/hookEvents.deleteDocument.html)
 - [公开社区 ChatPopout 类型](https://github.com/League-of-Foundry-Developers/foundry-vtt-types/blob/main/src/foundry/client/applications/sidebar/apps/chat-popout.d.mts)：构造选项、核心渲染委托和文档应用注册的补充依据；属于社区资料，未冒充官方实现源码。
 
 不分发或复制 Foundry 的专有实现。没有运行时私有 API 依赖；如果未来公开 API 缺失，明确报不支持，不降级为不安全的 HTML 复制。
+
+0.1.2 通过两版均公开的 `ApplicationV2.window` 中 `header`、`title`、`content`、`resize`、`controls`、`close` 元素引用添加局部样式类，压缩标题栏和对齐手柄。不替换核心 DOM 或事件处理器。短卡片仅在首次打开时根据实际消息元素、标题栏和边框测量高度；重复推送及后续渲染保留手动尺寸。
 
 ## 通信及威胁模型
 
@@ -58,13 +61,15 @@
     "protocol": 1,
     "nonce": "随机 UUID",
     "messageId": "消息 ID",
-    "recipients": ["非 GM 玩家 ID"],
+    "recipients": ["玩家 ID 或本次推送 GM 自己的 ID"],
     "issuedAt": 0
   }
 }
 ```
 
 `issuedAt` 实际为毫秒时间戳。仅最后一份记录留在消息上。通过核心服务器的请求顺序传播，不对自定义 Socket 做盲目信任。离线不排队、重连不重放，不承诺应用级确认/阅读回执；任何客户端都必须保持模组启用。实际服务器会话身份防伪仍列入实机测试清单，隔离测试不能验证专有服务器内部实现。
+
+0.1.3 允许发起推送的 GM 勾选自己。接收策略中的 GM 身份例外必须与核心 Hook 的实际发起用户 `userId` 匹配，不能从载荷声明身份；列表不扩展到其他 GM。GM 自己仍须通过本机 `visible` / `isContentVisible` 校验；普通玩家继续受到原有 whisper/blind 过滤。GM 自己默认不选中，避免改变原有默认推送对象。
 
 ## PF2e 和现有模组
 

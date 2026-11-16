@@ -22,7 +22,7 @@ export function recipientPickerClass(ApplicationV2) {
       super({ position: initialPosition(viewportSize()) });
       this.message = message;
       this.controller = controller;
-      this.selected = new Set(recipientRows(message, game.users).filter(row => !row.blocked).map(row => row.id));
+      this.selected = new Set(recipientRows(message, game.users, game.user.id).filter(row => !row.blocked && !row.isGM).map(row => row.id));
       this.sending = false;
     }
 
@@ -37,7 +37,7 @@ export function recipientPickerClass(ApplicationV2) {
       toolbar.append(all, none);
       form.append(toolbar);
       const list = element("div", { className: "dcp-recipient-list", role: "group", "aria-label": localize("Recipients") });
-      const rows = recipientRows(this.message, game.users);
+      const rows = recipientRows(this.message, game.users, game.user.id);
       this.selected = new Set(rows.filter(row => !row.blocked && this.selected.has(row.id)).map(row => row.id));
       const checks = [];
       for (const row of rows) {
@@ -46,7 +46,8 @@ export function recipientPickerClass(ApplicationV2) {
         input.checked = !row.blocked && this.selected.has(row.id);
         input.disabled = !!row.blocked || this.sending;
         const status = row.active ? localize("Online") : localize("Offline");
-        label.append(input, element("span", { className: "dcp-user-name", text: row.name }),
+        const name = row.isSelf && row.isGM ? localize("SelfGM", { name: row.name }) : row.name;
+        label.append(input, element("span", { className: "dcp-user-name", text: name }),
           element("span", { className: "dcp-user-status", text: row.blocked === "Private" ? `${status} · ${localize("Private")}` : status }));
         list.append(label);
         checks.push(input);

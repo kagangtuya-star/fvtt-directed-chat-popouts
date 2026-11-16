@@ -60,7 +60,7 @@ export class PushController {
     if (!Array.isArray(recipients)) throw new Error("DCP.NoRecipients");
     const eligible = [...new Set(recipients)].filter(id => {
       const user = this.game.users.get(id);
-      return user && !recipientBlock(message, user);
+      return user && !recipientBlock(message, user, this.game.user.id);
     });
     if (!eligible.length) throw new Error("DCP.NoRecipients");
     const request = {
@@ -83,8 +83,9 @@ export class PushController {
     if (typeof nonce !== "string") return false;
     const request = message.getFlag(MODULE_ID, REQUEST_FLAG);
     if (nonce !== request?.nonce || !canRead(message)) return false;
-    if (recipientBlock(message, this.game.user)) return false;
-    if (!validRequest(request, message.id, this.game.user, this.game.users)) return false;
+    if (recipientBlock(message, this.game.user, userId)) return false;
+    // userId is the authenticated update origin, never an envelope field.
+    if (!validRequest(request, message.id, this.game.user, this.game.users, Date.now(), userId)) return false;
     if (!this.#seen.accept(`${message.id}:${nonce}`)) return false;
     return this.popouts.open(message.id);
   }

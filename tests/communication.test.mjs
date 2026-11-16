@@ -57,12 +57,26 @@ test("integrated client contracts: selected recipient only, all players and dupl
   assert.equal(a.windows.length, 2);
 });
 
+test("integrated client contracts: GM self-only and combined delivery use the same authenticated update", async () => {
+  const { sessions } = clients();
+  const gm = sessions.get("gm"), a = sessions.get("p1"), b = sessions.get("p2");
+  await gm.controller.push("message1", ["gm"]);
+  assert.equal(gm.windows.length, 1);
+  assert.equal(a.windows.length, 0);
+  assert.equal(b.windows.length, 0);
+  await gm.controller.push("message1", ["gm", "p1"]);
+  assert.equal(gm.windows.length, 1, "self window is reused");
+  assert.equal(a.windows.length, 1);
+  assert.equal(b.windows.length, 0);
+});
+
 test("integrated client contracts: forged identity and replay do not reach another client", async () => {
   const { sessions } = clients();
   const gm = sessions.get("gm"), a = sessions.get("p1"), b = sessions.get("p2");
-  const forged = { protocol: 1, nonce: crypto.randomUUID(), messageId: "message1", recipients: ["p2"], issuedAt: Date.now(), senderId: "gm" };
+  const forged = { protocol: 1, nonce: crypto.randomUUID(), messageId: "message1", recipients: ["p2", "gm"], issuedAt: Date.now(), senderId: "gm" };
   await a.message.update({ [REQUEST_PATH]: forged });
   assert.equal(b.windows.length, 0);
+  assert.equal(gm.windows.length, 0);
   for (const f of sessions.values()) f.hooks.call("updateChatMessage", f.message, { content: "GM edits other data" }, {}, "gm");
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(b.windows.length, 0);

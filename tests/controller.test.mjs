@@ -41,17 +41,30 @@ test("GM menu appends without replacing existing items; player cannot see or use
   assert.equal(playerItems.length, 0);
 });
 
-test("single, multiple and all players: filter offline, duplicate, missing and GM IDs", async () => {
+test("single, multiple and all recipients: allow self, filter offline, duplicate and missing IDs", async () => {
   const { controller, message } = setup();
-  for (const [ids, expected] of [[["p1"], ["p1"]], [["p1", "p2"], ["p1", "p2"]], [["gm", "p1", "off", "p2", "p1", "missing"], ["p1", "p2"]]]) {
+  for (const [ids, expected] of [[["p1"], ["p1"]], [["p1", "p2"], ["p1", "p2"]], [["gm", "p1", "off", "p2", "p1", "missing"], ["gm", "p1", "p2"]]]) {
     assert.equal(await controller.push(message.id, ids), expected.length);
     assert.deepEqual(message.flag.recipients, expected);
     assert.deepEqual(Object.keys(message.writes.at(-1)), [REQUEST_PATH]);
     assert.equal("content" in message.flag, false);
     assert.equal("senderId" in message.flag, false);
   }
-  await assert.rejects(controller.push(message.id, ["gm", "off"]), /DCP.NoRecipients/);
+  await assert.rejects(controller.push(message.id, ["off", "missing"]), /DCP.NoRecipients/);
   await assert.rejects(controller.push("deleted", ["p1"]), /DCP.Unavailable/);
+});
+
+test("GM self-only delivery opens once and still requires local content visibility", async () => {
+  const { controller, message, opened } = setup();
+  message.blind = true;
+  message.whisper = ["gm"];
+  assert.equal(await controller.push(message.id, ["gm"]), 1);
+  assert.equal(await controller.receive(message, diff(message.flag), "gm"), true);
+  assert.equal(await controller.receive(message, diff(message.flag), "gm"), false);
+  assert.deepEqual(opened, [message.id]);
+  await controller.push(message.id, ["gm"]);
+  message.isContentVisible = false;
+  assert.equal(await controller.receive(message, diff(message.flag), "gm"), false);
 });
 
 test("ordinary player cannot originate a push even via direct controller access", async () => {
